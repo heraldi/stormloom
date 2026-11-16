@@ -65,8 +65,13 @@ function drawHud(ctx, state) {
   }
 
   label(ctx, 'HEAT', 716, 27, 10, COLORS.ivoryDim);
-  label(ctx, `${Math.round(state.heat)}°`, 716, 50, 16, state.heat > 72 ? COLORS.coral : COLORS.ivory);
+  label(ctx, `${Math.round(state.heat)}/100`, 716, 50, 16, state.heat > 72 ? COLORS.coral : COLORS.ivory);
   bar(ctx, 716, 62, 112, state.heat, BALANCE.heatMax, state.heat > 72 ? COLORS.coral : COLORS.ivoryDim);
+  // Persistent danger zone and threshold tick: critical heat is not color-only.
+  ctx.fillStyle = 'rgba(234,111,97,.5)';
+  ctx.fillRect(716 + 112 * 0.72, 62, 112 * 0.28, 7);
+  ctx.fillStyle = COLORS.ivory;
+  ctx.fillRect(716 + 112 * 0.72, 60, 2, 11);
 
   label(ctx, 'MULT', 871, 27, 10, COLORS.ivoryDim);
   label(ctx, `x${state.multiplier.toFixed(2)}`, 871, 50, 17, COLORS.ivory);
@@ -76,7 +81,7 @@ function drawHud(ctx, state) {
   bar(ctx, 1018, 62, 132, state.frontTime, BALANCE.frontDuration, state.frontTime < 7 ? COLORS.coral : COLORS.foam);
 
   label(ctx, `BUOYS ${state.buoysPlaced}/3`, 28, 87, 11, state.buoysPlaced === 2 ? COLORS.ivory : COLORS.ivoryDim);
-  label(ctx, state.net.charge > 0.01 ? `CHARGE ${(state.net.charge * 100).toFixed(0)}%` : 'CHARGE —', 126, 87, 11, state.net.charge > 0.01 ? COLORS.ivory : COLORS.ivoryDim);
+  label(ctx, state.net.charge > 0.01 ? `CHARGE x${state.multiplier.toFixed(2)}` : 'CHARGE —', 126, 87, 11, state.net.charge > 0.01 ? COLORS.ivory : COLORS.ivoryDim);
   label(ctx, `HARVESTS ${state.harvests}`, 260, 87, 11, COLORS.ivoryDim);
   label(ctx, 'WASD MOVE   SPACE DROP   E VENT   ESC PAUSE', 1040, 87, 10, COLORS.ivoryDim, 'right');
   ctx.restore();
@@ -119,10 +124,10 @@ function drawStart(ctx) {
   label(ctx, 'CONTROLS', 340, 451, 11, COLORS.amberLight);
   label(ctx, 'WASD', 340, 482, 14, COLORS.ivory); label(ctx, 'steer the skiff', 410, 482, 13, COLORS.ivoryDim);
   label(ctx, 'SPACE', 580, 482, 14, COLORS.ivory); label(ctx, 'drop a buoy', 660, 482, 13, COLORS.ivoryDim);
-  label(ctx, 'E', 790, 482, 14, COLORS.ivory); label(ctx, 'vent unfinished circuit', 820, 482, 13, COLORS.ivoryDim);
+  label(ctx, 'E', 790, 482, 14, COLORS.ivory); label(ctx, 'vent wire', 820, 482, 13, COLORS.ivoryDim);
   label(ctx, 'ESC', 340, 516, 14, COLORS.ivory); label(ctx, 'pause · audio · reduced motion', 410, 516, 13, COLORS.ivoryDim);
   label(ctx, 'A salvage run lasts six storm fronts.', ARENA.width / 2, 618, 13, COLORS.foam, 'center');
-  label(ctx, 'Every crossing builds charge — and heat.', ARENA.width / 2, 641, 13, COLORS.foam, 'center');
+  label(ctx, 'Every crossing builds heat. Leave marked strike rings before they close.', ARENA.width / 2, 641, 13, COLORS.foam, 'center');
   ctx.restore();
 }
 
@@ -173,7 +178,7 @@ function drawUpgrade(ctx, state) {
 
 function drawEnd(ctx, state, victory) {
   ctx.save();
-  ctx.fillStyle = 'rgba(3, 12, 21, .87)';
+  ctx.fillStyle = 'rgba(3, 12, 21, .96)';
   ctx.fillRect(0, 0, ARENA.width, ARENA.height);
   ctx.textAlign = 'center';
   ctx.fillStyle = victory ? COLORS.amberLight : COLORS.coral;
@@ -182,11 +187,11 @@ function drawEnd(ctx, state, victory) {
   ctx.fillStyle = COLORS.ivory;
   ctx.font = '400 17px system-ui';
   ctx.fillText(victory ? 'A warm signal cuts through the last cloudbank.' : state.defeatReason, ARENA.width / 2, 230);
-  ctx.fillStyle = 'rgba(246,239,220,.08)';
+  ctx.fillStyle = '#102734';
   roundedRect(ctx, 335, 278, 610, 176, 8); ctx.fill();
   label(ctx, 'FINAL SCORE', 390, 322, 11, COLORS.ivoryDim);
   label(ctx, formatNumber(state.score), 390, 357, 28, COLORS.ivory);
-  label(ctx, 'FRONTS SURVIVED', 570, 322, 11, COLORS.ivoryDim);
+  label(ctx, 'FRONTS COMPLETED', 570, 322, 11, COLORS.ivoryDim);
   label(ctx, `${state.frontsSurvived} / ${BALANCE.maxFronts}`, 570, 357, 28, COLORS.ivory);
   label(ctx, 'LARGEST HARVEST', 770, 322, 11, COLORS.ivoryDim);
   label(ctx, `${formatNumber(state.largestHarvest)} E`, 770, 357, 28, COLORS.amberLight);
@@ -197,8 +202,10 @@ function drawEnd(ctx, state, victory) {
 }
 
 export function drawHudAndMenus(ctx, state) {
-  drawHud(ctx, state);
-  drawHint(ctx, state);
+  if (state.mode !== 'START' && state.mode !== 'VICTORY' && state.mode !== 'DEFEAT') {
+    drawHud(ctx, state);
+    drawHint(ctx, state);
+  }
   if (state.mode === 'START') drawStart(ctx);
   if (state.mode === 'PAUSE') drawPause(ctx, state);
   if (state.mode === 'UPGRADE') drawUpgrade(ctx, state);

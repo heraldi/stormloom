@@ -73,6 +73,41 @@ function drawBolt(ctx, bolt) {
   ctx.restore();
 }
 
+function drawStrikes(ctx, state) {
+  for (const strike of state.strikes) {
+    const warning = strike.phase === 'WARNING';
+    const impact = strike.phase === 'IMPACT';
+    const fade = warning || impact ? 1 : clamp(strike.remaining / BALANCE.strikeRecovery, 0, 1);
+    ctx.save();
+    ctx.translate(strike.x, strike.y);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = impact ? 'rgba(246,239,220,.65)' : 'rgba(234,111,97,.12)';
+    ctx.strokeStyle = COLORS.coral;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, strike.radius, 0, TAU); ctx.fill(); ctx.stroke();
+    if (warning) {
+      ctx.strokeStyle = COLORS.ivory;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, strike.radius + 7, -Math.PI / 2, -Math.PI / 2 + TAU * strike.remaining / BALANCE.strikeWarnDuration);
+      ctx.stroke();
+      // Keep the countdown off the targeted skiff, and below the HUD at the top edge.
+      const labelTop = strike.y - strike.radius + 14 < ARENA.hudHeight + 10 ? 34 : -strike.radius + 14;
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(-42, labelTop, 84, 24);
+      ctx.fillStyle = COLORS.ivory;
+      ctx.font = '700 12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(`STRIKE ${strike.remaining.toFixed(1)}`, 0, labelTop + 17);
+    } else {
+      ctx.strokeStyle = COLORS.ivory;
+      ctx.lineWidth = impact ? 5 : 2;
+      ctx.beginPath(); ctx.moveTo(8, -60); ctx.lineTo(-12, -4); ctx.lineTo(12, -4); ctx.lineTo(-8, 60); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function drawNet(ctx, state) {
   const points = state.net.points;
   const preview = previewTriangle(state);
@@ -103,8 +138,13 @@ function drawNet(ctx, state) {
   if (points.length === 0) return;
   ctx.save();
   ctx.strokeStyle = COLORS.ivory;
-  ctx.globalAlpha = 0.92;
-  ctx.lineWidth = state.net.charge > 0.05 ? 3 : 2;
+  ctx.globalAlpha = 1;
+  const charged = state.net.charge > 0.01;
+  ctx.lineWidth = charged ? 4 : 2.5;
+  if (charged && !state.settings.reducedMotion) {
+    ctx.shadowColor = COLORS.amberLight;
+    ctx.shadowBlur = 14;
+  }
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
@@ -163,18 +203,18 @@ function drawBeacon(ctx, state) {
 
 function drawSparks(ctx, state) {
   for (const spark of state.sparks) {
-    const intensity = sparkIntensity(state, spark);
+    const intensity = state.settings.reducedMotion ? 1 : Math.max(0.85, sparkIntensity(state, spark));
     ctx.save();
     ctx.translate(spark.x, spark.y);
-    ctx.rotate(spark.phase * 0.35);
+    if (!state.settings.reducedMotion) ctx.rotate(spark.phase * 0.35);
     ctx.globalAlpha = intensity;
     ctx.strokeStyle = COLORS.coral;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.moveTo(-8, 0);
-    ctx.lineTo(-2, -4);
-    ctx.lineTo(1, 1);
-    ctx.lineTo(8, -3);
+    ctx.moveTo(-11, 1);
+    ctx.lineTo(-3, -6);
+    ctx.lineTo(2, 3);
+    ctx.lineTo(11, -4);
     ctx.stroke();
     ctx.globalAlpha = intensity * 0.35;
     ctx.strokeStyle = COLORS.ivory;
@@ -227,7 +267,7 @@ function drawSkiff(ctx, state) {
   ctx.restore();
 }
 
-function drawEffect(ctx, effect) {
+function drawEffect(ctx, effect, reducedMotion) {
   const alpha = clamp(effect.life / 1.2, 0, 1);
   if (effect.kind === 'seal') {
     const [a, b, c] = effect.points;
@@ -239,6 +279,28 @@ function drawEffect(ctx, effect) {
     ctx.beginPath();
     ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.closePath();
     ctx.fill(); ctx.stroke();
+    // A brief interior discharge, clipped to the actual harvested triangle.
+    if (effect.life > 0.95) {
+      ctx.save();
+      ctx.clip();
+      const cx = (a.x + b.x + c.x) / 3;
+      const cy = (a.y + b.y + c.y) / 3;
+      const fade = (effect.life - 0.95) / 0.3;
+      ctx.globalAlpha = fade * (reducedMotion ? 0.25 : 0.8);
+      ctx.strokeStyle = COLORS.amberLight;
+      ctx.lineWidth = 4;
+      if (!reducedMotion) {
+        ctx.shadowColor = COLORS.amber;
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = `rgba(231,168,62,${fade * 0.2})`;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y); ctx.lineTo(cx - 14, cy - 9); ctx.lineTo(cx + 12, cy + 4); ctx.lineTo(b.x, b.y);
+      ctx.moveTo(cx, cy); ctx.lineTo(cx - 8, cy + 19); ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.globalAlpha = alpha * 0.5;
     ctx.lineWidth = 1;
     for (let i = 1; i < 10; i += 1) {
@@ -291,9 +353,10 @@ export function drawWorld(ctx, state) {
   drawSparks(ctx, state);
   for (const bolt of state.bolts) drawBolt(ctx, bolt);
   drawNet(ctx, state);
-  drawBeacon(ctx, state);
-  drawSkiff(ctx, state);
-  for (const effect of state.effects) drawEffect(ctx, effect);
+  drawStrikes(ctx, state);
+  if (state.mode !== 'START') drawBeacon(ctx, state);
+  if (state.mode !== 'START') drawSkiff(ctx, state);
+  for (const effect of state.effects) drawEffect(ctx, effect, state.settings.reducedMotion);
   if (netArea(state) > 0) {
     ctx.save();
     ctx.fillStyle = COLORS.ivoryDim;
