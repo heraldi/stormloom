@@ -49,6 +49,12 @@ node ~/makefun/stormloom-qa/logic-check.mjs
 
 The image files under `screenshots/` replace all starter imagery. They are provisional development captures from the real browser: preview/play, start, victory, and hull defeat. Final composition and capture remain phase-3 work. `shots.json` describes their provenance; empty queries do not bypass gameplay to manufacture a result screen.
 
+## Early kit pre-submit check
+
+The exact documented `bundle` and `check` commands were run against the pushed phase-one commit. Result: **13 passed, 0 failed, 6 skipped, 5 checked at submission**. Authorship coverage was **99.5%** of counted lines; the recorded-session, timestamps, pricing, revision, and run-record checks passed. This is a local repository/transcript precheck, not a server grade or a submission. Final bundling must run again after the later phases so their work is included too.
+
+Both hand-in executions were byte-identical. At this milestone `game/` contains 13 files totaling about 52 KB, and each of the four real JPEG captures is under 55 KB, well below the competition caps. The vendor library comparison passes unchanged.
+
 ## Tuning evidence
 
 The first moving-skiff tests revealed sluggish steering, disproportionately dense initial sparks, and rewards that could be farmed from nearly flat triangles. Steering now converges rapidly to the requested velocity; early sparks are sparse with a safe initial radius; duplicate anchors and triangles below 1,200 square units cannot harvest. Charge now produces a visible multiplier and sustained open-wire exposure can really overheat.
