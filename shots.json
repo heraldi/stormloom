@@ -1,5 +1,6 @@
 [
-  { "name": "1-start.jpg", "query": "?shot=start&seed=1" },
-  { "name": "2-play.jpg", "query": "?shot=play&seed=1" },
-  { "name": "3-end.jpg", "query": "?shot=end&seed=1" }
+  { "name": "1-play.jpg", "query": "", "capture": "Live third-corner preview during a keyboard-driven run; phase-one development capture." },
+  { "name": "2-start.jpg", "query": "", "capture": "Start screen before the Start click." },
+  { "name": "3-victory.jpg", "query": "", "capture": "Beacon filled through ordinary buoy placements, with score and restart visible." },
+  { "name": "4-defeat.jpg", "query": "", "capture": "Hull-loss defeat reached by steering into drifting sparks." }
 ]
