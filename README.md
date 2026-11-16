@@ -6,7 +6,7 @@
 
 **STORMLOOM — Relight the beacon before dawn.** Steer a salvage skiff across an engraved, ink-blue sea. Place three conductive buoys to seal a triangular lightning net, harvest energy, and reposition. Stretch farther for larger returns; lightning crossing an open wire increases both its multiplier and its heat. Vent before the unfinished circuit overheats, and avoid drifting sparks with your three-point hull.
 
-Phase 1 is playable: start, six storm fronts, two retrofit windows, victory, hull-loss and dawn-loss defeat, pause, and immediate restart. Telegraphed damaging strikes, pursuing squalls, the final art/audio pass, and the competition submission are reserved for phases 2–3. The screenshots currently show real development playtests, not a final promotional capture.
+Phase 2 adds seeded, telegraphed lightning strikes to the full playable loop: start, six storm fronts, two retrofit windows, victory, specific hull-loss and dawn-loss defeats, pause, and immediate restart. Strike targets lock when their 1.5-second warning begins; leave the coral ring before the countdown closes. A strike hits the hull or heats an open wire, never both directly. This release is strikes-only: pursuing squalls are deliberately deferred rather than shipping unverified overlapping hazards. All four screenshots are unedited captures of real browser play.
 
 ## Run it
 
@@ -38,7 +38,7 @@ mkdir -p out
 MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
-`main.ts` copies `game/` and `screenshots/` and writes the dossier using the unchanged kit library in `vendor/makefun-game.ts`. Development testing and remaining scope are recorded in [PHASE1.md](PHASE1.md).
+`main.ts` copies `game/` and `screenshots/` and writes the dossier using the unchanged kit library in `vendor/makefun-game.ts`. Development testing and remaining scope are recorded in [PHASE1.md](PHASE1.md) and [PHASE2.md](PHASE2.md).
 
 ---
 

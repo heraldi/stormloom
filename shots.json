@@ -1,6 +1,6 @@
 [
-  { "name": "1-play.jpg", "query": "", "capture": "Live third-corner preview during a keyboard-driven run; phase-one development capture." },
-  { "name": "2-start.jpg", "query": "", "capture": "Start screen before the Start click." },
-  { "name": "3-victory.jpg", "query": "", "capture": "Beacon filled through ordinary buoy placements, with score and restart visible." },
-  { "name": "4-defeat.jpg", "query": "", "capture": "Hull-loss defeat reached by steering into drifting sparks." }
+  { "name": "1-play.jpg", "query": "", "capture": "Real keyboard-driven play at about 9.8 simulation seconds: a charged triangle has just harvested 221 energy, showing its brief interior discharge and amber pulse while a locked-target strike warning counts down. The net has already discharged, so the HUD truthfully returns to MULT x1.00. No scene overrides, state injection, compositing, or image edits." },
+  { "name": "2-start.jpg", "query": "", "capture": "Real browser start screen before clicking Begin: no live HUD, front timer, hint, beacon icon, or skiff behind the controls." },
+  { "name": "3-victory.jpg", "query": "", "capture": "Real browser victory after ordinary movement and buoy placements filled the 2400-energy beacon at about 53.2 simulation seconds. One front completed; no retrofit earned yet. Reduced-motion and mute settings were enabled through the pause menu. Stats have an opaque backing panel." },
+  { "name": "4-defeat.jpg", "query": "", "capture": "Real browser hull defeat from staying inside successive aimed strike warnings. The actual subtitle is Struck by lightning on front 2; no result screen was forced. All four captures are unedited 1280x760 Chromium JPEG renders at quality 80, captured by the external phase2-capture.py script after gameplay gates passed." }
 ]
