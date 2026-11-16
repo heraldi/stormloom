@@ -24,11 +24,9 @@ state.emitEffect = (effect) => emitEffect(state, effect);
 state.audioStarted = false;
 
 function begin() {
-  if (!state.audioStarted) {
-    state.audioStarted = true;
-    audio.start();
-  }
+  state.audioStarted = true;
   startGame(state, audio);
+  audio.setVolume(state.settings.volume);
   seedStorm(state);
 }
 
@@ -66,6 +64,12 @@ function handlePressed() {
     audio.setMuted(state.settings.muted);
   } else if (state.mode === 'PAUSE' && wasPressed(input, 'r')) {
     state.settings.reducedMotion = !state.settings.reducedMotion;
+  } else if (state.mode === 'PAUSE' && (wasPressed(input, '+') || wasPressed(input, '='))) {
+    state.settings.volume = Math.min(1, state.settings.volume + 0.1);
+    audio.setVolume(state.settings.volume);
+  } else if (state.mode === 'PAUSE' && wasPressed(input, '-')) {
+    state.settings.volume = Math.max(0, state.settings.volume - 0.1);
+    audio.setVolume(state.settings.volume);
   } else if (state.mode === 'PLAY') {
     if (wasPressed(input, ' ')) placeBuoy(state, audio, state.emitEffect);
     if (wasPressed(input, 'e')) ventNet(state, audio, state.emitEffect);
@@ -81,14 +85,16 @@ function simulate(dt) {
   }
   updateSkiff(state, input, dt);
   updateStorm(state, dt);
-  checkSparkCollisions(state);
+  if (state.mode === 'PLAY') checkSparkCollisions(state);
   updateEffects(state, dt);
-  if (state.net.points.length === 2 && state.hintTimer <= 0) state.hint = 'Preview triangle active — steer to the third corner, then drop.';
 }
 
 function render() {
   ctx.save();
-  if (!state.settings.reducedMotion && state.shake > 0) ctx.translate((Math.random() - 0.5) * state.shake * 8, (Math.random() - 0.5) * state.shake * 5);
+  if (!state.settings.reducedMotion && state.shake > 0) {
+    const phase = state.clock * 38;
+    ctx.translate(Math.sin(phase) * state.shake * 4, Math.cos(phase * 1.3) * state.shake * 3);
+  }
   drawSea(ctx, sea);
   drawWorld(ctx, state);
   ctx.restore();
@@ -113,4 +119,22 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+// Read-only diagnostics for repeatable browser playtests; this cannot alter a run.
+export function inspectRun() {
+  return structuredClone({
+    mode: state.mode, clock: state.clock, seed: state.seed,
+    front: state.front, frontTime: state.frontTime, frontsSurvived: state.frontsSurvived,
+    skiff: state.skiff, net: state.net, hull: state.hull, heat: state.heat,
+    beacon: state.beacon, score: state.score, harvests: state.harvests,
+    largestHarvest: state.largestHarvest, multiplier: state.multiplier,
+    sparks: state.sparks, stats: state.stats, upgrades: state.upgrades,
+    settings: state.settings, reason: state.defeatReason,
+    effects: state.effects.length,
+    bonuses: [state.heatDissipationBonus, state.harvestPowerBonus, state.mobilityBonus, state.hullGuard],
+  });
+}
+
+window.addEventListener('blur', () => {
+  if (state.mode === 'PLAY') state.mode = 'PAUSE';
+});
 requestAnimationFrame(frame);

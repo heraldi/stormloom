@@ -1,4 +1,4 @@
-import { ARENA, BALANCE, clamp } from './balance.js';
+import { BALANCE, clamp } from './balance.js';
 import { registerLightningCrossing } from './lightning-nets.js';
 
 function random(state) {
@@ -27,7 +27,12 @@ export function seedStorm(state) {
   state.directorSeed = state.seed >>> 0;
   state.directorClock = 0.9;
   state.sparks.length = 0;
-  for (let i = 0; i < BALANCE.sparkCount; i += 1) state.sparks.push(sparkFrom(state, i, true));
+  for (let i = 0; i < BALANCE.sparkCount; i += 1) {
+    const spark = sparkFrom(state, i, true);
+    if (Math.hypot(spark.x - state.skiff.x, spark.y - state.skiff.y) < 160) spark.x = BALANCE.playBounds.right + 30;
+    state.sparks.push(spark);
+  }
+  state.hitCooldown = 2;
   state.bolts.length = 0;
 }
 
@@ -53,10 +58,13 @@ function spawnBolt(state) {
 export function updateStorm(state, dt) {
   if (!state.sparks.length) seedStorm(state);
   const bounds = BALANCE.playBounds;
+  const targetCount = BALANCE.sparkCount + (state.front - 1) * 2;
+  while (state.sparks.length < targetCount) state.sparks.push(sparkFrom(state, state.sparks.length));
+  const speed = 1 + (state.front - 1) * 0.12;
   for (const spark of state.sparks) {
     spark.phase += dt * (1.2 + spark.pulse);
-    spark.x += spark.vx * dt;
-    spark.y += spark.vy * dt + Math.sin(spark.phase) * 5 * dt;
+    spark.x += spark.vx * dt * speed;
+    spark.y += spark.vy * dt * speed + Math.sin(spark.phase) * 5 * dt;
     if (spark.x < bounds.left - 50 || spark.y < bounds.top - 50 || spark.y > bounds.bottom + 50) {
       Object.assign(spark, sparkFrom(state, spark.id));
     }

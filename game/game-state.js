@@ -34,8 +34,15 @@ export function createGameState(seed = 72031) {
     upgradeKind: null,
     upgradeOptions: [],
     upgrades: [],
-    stats: { crossings: 0, sparksDodged: 0, vents: 0 },
-    settings: { muted: false, reducedMotion: false },
+    heatDissipationBonus: 1,
+    harvestPowerBonus: 1,
+    mobilityBonus: 1,
+    hullGuard: 0,
+    defeatReason: '',
+    directorSeed: seed,
+    directorClock: 0.9,
+    stats: { crossings: 0, vents: 0, overheats: 0, impacts: 0 },
+    settings: { muted: false, reducedMotion: false, volume: 0.65 },
     audioStarted: false,
   };
 }
@@ -68,8 +75,10 @@ export function updateClock(state, dt) {
   state.flash = Math.max(0, state.flash - dt * 3);
   state.shake = Math.max(0, state.shake - dt * 3);
   state.hintTimer = Math.max(0, state.hintTimer - dt);
-  state.heat = clamp(state.heat - dt * BALANCE.heatDissipation, 0, BALANCE.heatMax);
+  const cooling = state.net.points.length >= 2 ? BALANCE.openWireCooling : BALANCE.heatDissipation;
+  state.heat = clamp(state.heat - dt * cooling * state.heatDissipationBonus, 0, BALANCE.heatMax);
   state.net.charge = Math.max(0, state.net.charge - dt * BALANCE.netChargeDecay);
+  state.multiplier = 1 + state.net.charge * BALANCE.harvestChargeScale;
 }
 
 export function finishFront(state) {
@@ -78,6 +87,7 @@ export function finishFront(state) {
   state.frontTime = BALANCE.frontDuration;
   state.net = makeNet();
   state.buoysPlaced = 0;
+  state.multiplier = 1;
   state.heat = Math.max(0, state.heat - 30);
 
   if (state.front > BALANCE.maxFronts) {
@@ -98,7 +108,7 @@ export function finishFront(state) {
     state.upgradeOptions = state.front === 3
       ? [
           { title: 'COOLING FINS', detail: 'Heat clears 35% faster', effect: 'heatDissipation', value: 1.35 },
-          { title: 'LACE AMPLIFIER', detail: 'Harvest charge is 30% stronger', effect: 'harvestPower', value: 1.3 },
+          { title: 'LACE AMPLIFIER', detail: 'All harvests yield 30% more energy', effect: 'harvestPower', value: 1.3 },
         ]
       : [
           { title: 'WIDE-RUDDER', detail: 'Skiff speed increases 22%', effect: 'mobility', value: 1.22 },
@@ -111,6 +121,7 @@ export function finishFront(state) {
 }
 
 export function chooseUpgrade(state, index) {
+  if (state.mode !== 'UPGRADE') return;
   const option = state.upgradeOptions[index];
   if (!option) return;
   state.upgrades.push(option.title);
@@ -134,6 +145,7 @@ export function damageHull(state, amount, reason) {
     return false;
   }
   state.hull = Math.max(0, state.hull - amount);
+  state.stats.impacts += 1;
   state.hitCooldown = BALANCE.sparkDamageCooldown;
   state.flash = 1;
   state.shake = 1;

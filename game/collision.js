@@ -7,18 +7,10 @@ export function updateSkiff(state, input, dt) {
   const move = moveVector(input);
   const speedBonus = state.mobilityBonus ?? 1;
   const maxSpeed = BALANCE.skiffSpeed * speedBonus;
-  const accel = BALANCE.skiffAccel * dt;
-  state.skiff.vx += move.x * accel;
-  state.skiff.vy += move.y * accel;
-  const drag = Math.pow(BALANCE.skiffDrag, dt * 60);
-  state.skiff.vx *= drag;
-  state.skiff.vy *= drag;
+  const response = Math.min(1, dt * BALANCE.steeringResponse);
+  state.skiff.vx += (move.x * maxSpeed - state.skiff.vx) * response;
+  state.skiff.vy += (move.y * maxSpeed - state.skiff.vy) * response;
   const velocity = Math.hypot(state.skiff.vx, state.skiff.vy);
-  if (velocity > maxSpeed) {
-    const scale = maxSpeed / velocity;
-    state.skiff.vx *= scale;
-    state.skiff.vy *= scale;
-  }
   state.skiff.x += state.skiff.vx * dt;
   state.skiff.y += state.skiff.vy * dt;
   const bounds = BALANCE.playBounds;
@@ -28,9 +20,10 @@ export function updateSkiff(state, input, dt) {
 }
 
 export function checkSparkCollisions(state) {
-  const hitDistance = BALANCE.skiffRadius + 11;
+  const hitDistance = BALANCE.skiffRadius + 7;
   const hitDistanceSquared = hitDistance * hitDistance;
   for (const spark of state.sparks) {
+    if (state.mode !== 'PLAY') break;
     const dx = spark.x - state.skiff.x;
     const dy = spark.y - state.skiff.y;
     if (dx * dx + dy * dy >= hitDistanceSquared) continue;

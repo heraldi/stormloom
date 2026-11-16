@@ -1,4 +1,4 @@
-import { BALANCE, ARENA, clamp } from './balance.js';
+import { BALANCE, clamp } from './balance.js';
 import { setHint } from './game-state.js';
 
 function triangleArea(a, b, c) {
@@ -75,6 +75,7 @@ export function ventNet(state, audio, emit) {
   state.net.points.length = 0;
   state.net.charge = 0;
   state.buoysPlaced = 0;
+  state.multiplier = 1;
   state.stats.vents += 1;
   emit?.({ kind: 'vent', x: state.skiff.x, y: state.skiff.y, size: 34 + lostCharge * 24 });
   audio?.vent?.();
@@ -86,6 +87,16 @@ export function harvestNet(state, audio, emit) {
   const [a, b, c] = state.net.points;
   const area = triangleArea(a, b, c);
   const charge = state.net.charge;
+  if (area < BALANCE.minimumNetArea) {
+    state.net.points.length = 0;
+    state.net.charge = 0;
+    state.buoysPlaced = 0;
+    state.multiplier = 1;
+    setHint(state, 'Net too tight to catch a useful storm current. Spread the anchors.', 3);
+    audio?.vent?.();
+    emit?.({ kind: 'vent', x: state.skiff.x, y: state.skiff.y, size: 28 });
+    return 0;
+  }
   const power = state.harvestPowerBonus ?? 1;
   const energy = (BALANCE.harvestBase + area * BALANCE.harvestAreaScale) *
     (1 + charge * BALANCE.harvestChargeScale) * power;
@@ -94,9 +105,9 @@ export function harvestNet(state, audio, emit) {
   state.score += Math.round(gained * BALANCE.scorePerEnergy * (1 + state.front * 0.08));
   state.largestHarvest = Math.max(state.largestHarvest, gained);
   state.harvests += 1;
-  state.multiplier = 1 + charge * 0.85;
+  state.multiplier = 1;
   state.net.lastHarvest = gained;
-  emit?.({ kind: 'harvest', x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3, amount: gained, area, charge });
+  emit?.({ kind: 'harvest', x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3, amount: gained, area, charge, points: [a, b, c] });
   audio?.harvest?.(Math.min(1, charge));
   state.net.points.length = 0;
   state.net.charge = 0;
@@ -123,7 +134,7 @@ export function registerLightningCrossing(state, bolt, audio, emit) {
   state.heat = clamp(state.heat + BALANCE.heatPerCrossing * crossed, 0, BALANCE.heatMax);
   state.stats.crossings += crossed;
   state.net.crossedAt = state.clock;
-  state.multiplier = 1 + state.net.charge * 0.85;
+  state.multiplier = 1 + state.net.charge * BALANCE.harvestChargeScale;
   emit?.({ kind: 'crossing', x: bolt.b.x, y: bolt.b.y, count: crossed });
   audio?.crossing?.(Math.min(1, state.net.charge));
   setHint(state, `Lightning caught — charge x${state.multiplier.toFixed(2)}. Heat rising.`, 2.4);
@@ -132,12 +143,15 @@ export function registerLightningCrossing(state, bolt, audio, emit) {
     state.net.points.length = 0;
     state.net.charge = 0;
     state.buoysPlaced = 0;
+    state.multiplier = 1;
     state.heatStun = BALANCE.heatStun;
+    state.hitCooldown = BALANCE.sparkDamageCooldown;
     state.shake = 1;
     state.flash = 1;
     emit?.({ kind: 'overheat', x: state.skiff.x, y: state.skiff.y });
     audio?.overheat?.();
     state.hull = Math.max(0, state.hull - BALANCE.heatDamage);
+    state.stats.overheats += 1;
     setHint(state, 'OVERHEAT — unfinished circuit destroyed, hull damaged.', 3.5);
     if (state.hull <= 0) {
       state.mode = 'DEFEAT';

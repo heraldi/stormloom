@@ -6,13 +6,15 @@ const TAU = Math.PI * 2;
 
 export function emitEffect(state, event) {
   const effects = state.effects;
-  if (effects.length > 175) effects.splice(0, 8);
+  // Reserve a whole burst up front; the effect pool never exceeds 192 records.
+  if (effects.length > 152) effects.splice(0, effects.length - 152);
   if (event.kind === 'harvest') {
+    effects.push({ kind: 'seal', points: event.points, life: 1.25 });
     for (let i = 0; i < 28; i += 1) {
       const angle = (i / 28) * TAU;
       effects.push({ kind: 'ember', x: event.x, y: event.y, vx: Math.cos(angle) * (40 + i % 5 * 13), vy: Math.sin(angle) * (40 + i % 5 * 13), life: 1.1 + (i % 4) * 0.08, size: 2 + i % 3 });
     }
-    effects.push({ kind: 'ring', x: event.x, y: event.y, life: 1.2, size: Math.max(45, Math.sqrt(event.area) * 0.8) });
+    effects.push({ kind: 'ring', x: event.x, y: event.y, life: 1.2, size: Math.max(45, Math.sqrt(event.area) * 0.8), energy: true });
     effects.push({ kind: 'text', x: event.x, y: event.y - 26, life: 1.8, text: `+${event.amount}`, color: COLORS.amberLight });
   } else if (event.kind === 'buoy') {
     effects.push({ kind: 'ring', x: event.x, y: event.y, life: 0.6, size: 18 });
@@ -88,10 +90,19 @@ function drawNet(ctx, state) {
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+    const [a, b, c] = preview;
+    const area = Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) * 0.5;
+    const estimate = Math.round((BALANCE.harvestBase + area * BALANCE.harvestAreaScale) * state.multiplier * state.harvestPowerBonus);
+    ctx.save();
+    ctx.fillStyle = COLORS.ivory;
+    ctx.font = '600 12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(area < BALANCE.minimumNetArea ? 'SPREAD THE THIRD CORNER' : `SEAL ≈ ${estimate} ENERGY`, (a.x + b.x + c.x) / 3, (a.y + b.y + c.y) / 3 - 10);
+    ctx.restore();
   }
   if (points.length === 0) return;
   ctx.save();
-  ctx.strokeStyle = state.net.charge > 0.05 ? COLORS.amberLight : COLORS.ivory;
+  ctx.strokeStyle = COLORS.ivory;
   ctx.globalAlpha = 0.92;
   ctx.lineWidth = state.net.charge > 0.05 ? 3 : 2;
   ctx.beginPath();
@@ -100,7 +111,7 @@ function drawNet(ctx, state) {
   if (points.length === 3) ctx.closePath();
   ctx.stroke();
   ctx.globalAlpha = 0.11 + state.net.charge * 0.08;
-  ctx.fillStyle = state.net.charge > 0.05 ? COLORS.amber : COLORS.ivory;
+  ctx.fillStyle = COLORS.ivory;
   if (points.length === 3) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
@@ -180,6 +191,13 @@ function drawSkiff(ctx, state) {
   const speed = Math.hypot(skiff.vx, skiff.vy);
   ctx.save();
   ctx.translate(skiff.x, skiff.y);
+  if (state.hitCooldown > 0) {
+    ctx.strokeStyle = COLORS.ivoryDim;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath(); ctx.arc(0, 0, 31, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+  }
   ctx.rotate(skiff.angle);
   ctx.fillStyle = COLORS.ink;
   ctx.strokeStyle = state.heat > 70 ? COLORS.coral : COLORS.ivory;
@@ -194,7 +212,7 @@ function drawSkiff(ctx, state) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = COLORS.amber;
+  ctx.fillStyle = COLORS.ivory;
   ctx.beginPath();
   ctx.arc(9, 0, 4, 0, TAU);
   ctx.fill();
@@ -211,7 +229,29 @@ function drawSkiff(ctx, state) {
 
 function drawEffect(ctx, effect) {
   const alpha = clamp(effect.life / 1.2, 0, 1);
-  if (effect.kind === 'ember') {
+  if (effect.kind === 'seal') {
+    const [a, b, c] = effect.points;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(231,168,62,.13)';
+    ctx.strokeStyle = COLORS.ivory;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 10; i += 1) {
+      const t = i / 10;
+      ctx.beginPath();
+      ctx.moveTo(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+      ctx.lineTo(a.x + (c.x - a.x) * t, a.y + (c.y - a.y) * t);
+      ctx.moveTo(b.x + (a.x - b.x) * t, b.y + (a.y - b.y) * t);
+      ctx.lineTo(b.x + (c.x - b.x) * t, b.y + (c.y - b.y) * t);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (effect.kind === 'ember') {
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = effect.coral ? COLORS.coral : COLORS.amberLight;
@@ -220,7 +260,7 @@ function drawEffect(ctx, effect) {
   } else if (effect.kind === 'ring') {
     ctx.save();
     ctx.globalAlpha = alpha * 0.7;
-    ctx.strokeStyle = effect.coral ? COLORS.coral : COLORS.amber;
+    ctx.strokeStyle = effect.coral ? COLORS.coral : effect.energy ? COLORS.amber : COLORS.ivory;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(effect.x, effect.y, effect.size, 0, TAU);
@@ -229,7 +269,7 @@ function drawEffect(ctx, effect) {
   } else if (effect.kind === 'cross') {
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = COLORS.amberLight;
+    ctx.strokeStyle = COLORS.ivory;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(effect.x - effect.size, effect.y - effect.size); ctx.lineTo(effect.x + effect.size, effect.y + effect.size);

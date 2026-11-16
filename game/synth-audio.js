@@ -34,6 +34,10 @@ export function createAudio() {
   return {
     start() { ensure(); tone(196, 0.18, 'triangle', 0.08, 70); tone(294, 0.28, 'sine', 0.07, 90); },
     setMuted(value) { muted = value; },
+    setVolume(value) {
+      ensure();
+      if (master) master.gain.value = Math.max(0, Math.min(0.25, value * 0.25));
+    },
     buoy() { ensure(); tone(240, 0.09, 'square', 0.06, 35); },
     crossing(charge) { ensure(); tone(280 + charge * 130, 0.16, 'sawtooth', 0.05, 120); },
     harvest(charge) { ensure(); tone(330, 0.15, 'triangle', 0.07, 90); tone(495 + charge * 180, 0.34, 'sine', 0.09, 100); },

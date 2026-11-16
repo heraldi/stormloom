@@ -1,4 +1,4 @@
-const CONTROL_KEYS = new Set(['w', 'a', 's', 'd', ' ', 'e', 'escape', 'm', 'r', 'enter', '1', '2']);
+const CONTROL_KEYS = new Set(['w', 'a', 's', 'd', ' ', 'e', 'escape', 'm', 'r', 'enter', '1', '2', '+', '-', '=']);
 
 export function bindSkiffControls(canvas) {
   const input = {
@@ -21,7 +21,12 @@ export function bindSkiffControls(canvas) {
     input.pointer.x = (event.clientX - rect.left) * (1280 / rect.width);
     input.pointer.y = (event.clientY - rect.top) * (760 / rect.height);
   });
-  canvas.addEventListener('pointerdown', () => { input.pointer.clicked = true; });
+  canvas.addEventListener('pointerdown', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    input.pointer.x = (event.clientX - rect.left) * (1280 / rect.width);
+    input.pointer.y = (event.clientY - rect.top) * (760 / rect.height);
+    input.pointer.clicked = true;
+  });
   canvas.tabIndex = 0;
   canvas.focus();
 

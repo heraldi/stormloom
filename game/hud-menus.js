@@ -69,21 +69,25 @@ function drawHud(ctx, state) {
   bar(ctx, 716, 62, 112, state.heat, BALANCE.heatMax, state.heat > 72 ? COLORS.coral : COLORS.ivoryDim);
 
   label(ctx, 'MULT', 871, 27, 10, COLORS.ivoryDim);
-  label(ctx, `x${state.multiplier.toFixed(2)}`, 871, 50, 17, state.multiplier > 1.04 ? COLORS.amberLight : COLORS.ivory);
+  label(ctx, `x${state.multiplier.toFixed(2)}`, 871, 50, 17, COLORS.ivory);
 
   label(ctx, `FRONT ${Math.min(state.front, BALANCE.maxFronts)} / ${BALANCE.maxFronts}`, 1018, 27, 10, COLORS.ivoryDim);
   label(ctx, `${Math.max(0, state.frontTime).toFixed(1)}s`, 1018, 50, 17, state.frontTime < 7 ? COLORS.coral : COLORS.ivory);
   bar(ctx, 1018, 62, 132, state.frontTime, BALANCE.frontDuration, state.frontTime < 7 ? COLORS.coral : COLORS.foam);
 
-  label(ctx, `BUOYS ${state.buoysPlaced}/3`, 28, 87, 11, state.buoysPlaced === 2 ? COLORS.amberLight : COLORS.ivoryDim);
-  label(ctx, state.net.charge > 0.01 ? `CHARGE ${(state.net.charge * 100).toFixed(0)}%` : 'CHARGE —', 126, 87, 11, state.net.charge > 0.01 ? COLORS.amberLight : COLORS.ivoryDim);
+  label(ctx, `BUOYS ${state.buoysPlaced}/3`, 28, 87, 11, state.buoysPlaced === 2 ? COLORS.ivory : COLORS.ivoryDim);
+  label(ctx, state.net.charge > 0.01 ? `CHARGE ${(state.net.charge * 100).toFixed(0)}%` : 'CHARGE —', 126, 87, 11, state.net.charge > 0.01 ? COLORS.ivory : COLORS.ivoryDim);
   label(ctx, `HARVESTS ${state.harvests}`, 260, 87, 11, COLORS.ivoryDim);
   label(ctx, 'WASD MOVE   SPACE DROP   E VENT   ESC PAUSE', 1040, 87, 10, COLORS.ivoryDim, 'right');
   ctx.restore();
 }
 
 function drawHint(ctx, state) {
-  const text = state.hintTimer > 0 ? state.hint : state.mode === 'PLAY' ? 'Keep moving. Tight nets are safer; charged nets pay more.' : '';
+  const context = state.heat > 75 ? 'Heat critical — seal now, or E to vent the unfinished wire.'
+    : state.net.points.length === 2 ? 'Preview active — shape your third corner, then Space to seal.'
+    : state.net.points.length === 1 ? 'One anchor set — move to stretch the wire, then Space.'
+    : 'Keep moving. Tight nets are safer; charged nets pay more.';
+  const text = state.hintTimer > 0 ? state.hint : state.mode === 'PLAY' ? context : '';
   if (!text) return;
   ctx.save();
   ctx.fillStyle = 'rgba(4, 14, 24, .72)';
@@ -132,7 +136,8 @@ function drawPause(ctx, state) {
   ctx.fillText('PAUSED', ARENA.width / 2, 218);
   button(ctx, 470, 270, 340, 62, 'RESUME', 'Esc');
   button(ctx, 470, 354, 162, 64, state.settings.muted ? 'SOUND OFF' : 'SOUND ON', 'M');
-  button(ctx, 648, 354, 162, 64, state.settings.reducedMotion ? 'MOTION LOW' : 'MOTION FULL', 'visual comfort');
+  button(ctx, 648, 354, 162, 64, state.settings.reducedMotion ? 'MOTION LOW' : 'MOTION FULL', 'R · visual comfort');
+  label(ctx, `VOLUME ${Math.round(state.settings.volume * 100)}%  (+ / −)`, 640, 448, 11, COLORS.foam, 'center');
   label(ctx, 'The sea keeps its shape while you plan the next net.', ARENA.width / 2, 475, 13, COLORS.ivoryDim, 'center');
   ctx.restore();
 }
