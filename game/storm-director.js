@@ -1,5 +1,6 @@
 import { BALANCE, clamp } from './balance.js';
 import { registerLightningCrossing } from './lightning-nets.js';
+import { resolveStrike } from './collision.js';
 
 function random(state) {
   state.directorSeed = (state.directorSeed * 1664525 + 1013904223) >>> 0;
@@ -34,6 +35,51 @@ export function seedStorm(state) {
   }
   state.hitCooldown = 2;
   state.bolts.length = 0;
+  state.strikes.length = 0;
+  state.strikeSerial = 0;
+  state.strikeClock = nextStrikeDelay(state);
+}
+
+function nextStrikeDelay(state) {
+  const [min, max] = BALANCE.strikeCadence[Math.min(state.front, BALANCE.maxFronts) - 1];
+  return min + random(state) * (max - min);
+}
+
+function warnStrike(state) {
+  const bounds = BALANCE.playBounds;
+  const aimed = random(state) < 0.7;
+  // Snapshot only: the director never updates these coordinates after warning starts.
+  const x = aimed ? state.skiff.x : bounds.left + random(state) * (bounds.right - bounds.left);
+  const y = aimed ? state.skiff.y : bounds.top + random(state) * (bounds.bottom - bounds.top);
+  state.strikes.push({ id: ++state.strikeSerial, x, y, radius: BALANCE.strikeBlastRadius,
+    phase: 'WARNING', remaining: BALANCE.strikeWarnDuration, resolved: false });
+  // Reuse the existing synth voice; no changes to the audio engine.
+  state.audio?.buoy?.();
+  state.audio?.crossing?.(0.1);
+}
+
+function updateStrikes(state, dt) {
+  state.strikeClock -= dt;
+  if (state.strikeClock <= 0) {
+    const warnings = state.strikes.filter((strike) => strike.phase === 'WARNING').length;
+    if (warnings < BALANCE.strikeMaxWarnings && state.heatStun <= 0) {
+      warnStrike(state);
+      state.strikeClock = nextStrikeDelay(state);
+    }
+  }
+  for (let i = state.strikes.length - 1; i >= 0; i -= 1) {
+    const strike = state.strikes[i];
+    strike.remaining -= dt;
+    if (strike.remaining > 1e-9) continue;
+    if (strike.phase === 'WARNING') {
+      strike.phase = 'IMPACT';
+      strike.remaining += BALANCE.strikeImpactWindow;
+      resolveStrike(state, strike);
+    } else if (strike.phase === 'IMPACT') {
+      strike.phase = 'RECOVERY';
+      strike.remaining += BALANCE.strikeRecovery;
+    } else state.strikes.splice(i, 1);
+  }
 }
 
 function spawnBolt(state) {
@@ -70,6 +116,8 @@ export function updateStorm(state, dt) {
     }
   }
 
+  updateStrikes(state, dt);
+  if (state.mode !== 'PLAY') return;
   state.directorClock -= dt;
   if (state.directorClock <= 0) {
     state.directorClock += Math.max(0.85, BALANCE.lightningInterval - state.front * 0.08);

@@ -1,6 +1,29 @@
 import { BALANCE, clamp } from './balance.js';
 import { damageHull } from './game-state.js';
 import { moveVector } from './skiff-controls.js';
+import { netSegments, addWireHeat } from './lightning-nets.js';
+
+function segmentDistance(point, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const t = lengthSquared ? clamp(((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared, 0, 1) : 0;
+  return Math.hypot(point.x - a.x - t * dx, point.y - a.y - t * dy);
+}
+
+export function resolveStrike(state, strike) {
+  if (strike.resolved) return;
+  strike.resolved = true;
+  if (state.mode !== 'PLAY' || state.clock < 6) return;
+  const radius = strike.radius;
+  // Hull has priority even during immunity: one strike never hits both hull and wire.
+  if (Math.hypot(state.skiff.x - strike.x, state.skiff.y - strike.y) <= radius + BALANCE.skiffRadius) {
+    const damaged = damageHull(state, 1, `Struck by lightning on front ${state.front}`);
+    if (damaged) state.emitEffect?.({ kind: 'sparkHit', x: state.skiff.x, y: state.skiff.y });
+  } else if (netSegments(state).some(([a, b]) => segmentDistance(strike, a, b) <= radius)) {
+    addWireHeat(state, BALANCE.strikeHeat);
+  }
+}
 
 export function updateSkiff(state, input, dt) {
   if (state.heatStun > 0) return;
@@ -27,7 +50,7 @@ export function checkSparkCollisions(state) {
     const dx = spark.x - state.skiff.x;
     const dy = spark.y - state.skiff.y;
     if (dx * dx + dy * dy >= hitDistanceSquared) continue;
-    const damaged = damageHull(state, 1, 'Drifting spark impact — keep the skiff moving.');
+    const damaged = damageHull(state, 1, `Drifting spark impact on front ${state.front}`);
     spark.x = BALANCE.playBounds.right + 30 + spark.id * 4;
     spark.y = BALANCE.playBounds.top + ((spark.id * 83 + state.front * 37) % 520);
     spark.vx = -Math.abs(spark.vx);

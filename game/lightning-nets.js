@@ -131,13 +131,19 @@ export function registerLightningCrossing(state, bolt, audio, emit) {
   }
   if (crossed === 0) return 0;
   state.net.charge = clamp(state.net.charge + BALANCE.chargePerCrossing * crossed, 0, 1.5);
-  state.heat = clamp(state.heat + BALANCE.heatPerCrossing * crossed, 0, BALANCE.heatMax);
   state.stats.crossings += crossed;
   state.net.crossedAt = state.clock;
   state.multiplier = 1 + state.net.charge * BALANCE.harvestChargeScale;
   emit?.({ kind: 'crossing', x: bolt.b.x, y: bolt.b.y, count: crossed });
   audio?.crossing?.(Math.min(1, state.net.charge));
   setHint(state, `Lightning caught — charge x${state.multiplier.toFixed(2)}. Heat rising.`, 2.4);
+  addWireHeat(state, BALANCE.heatPerCrossing * crossed, audio, emit);
+  return crossed;
+}
+
+// Both ambient crossings and a strike on an open wire use the same overheat path.
+export function addWireHeat(state, amount, audio = state.audio, emit = state.emitEffect) {
+  state.heat = clamp(state.heat + amount, 0, BALANCE.heatMax);
   if (state.heat >= BALANCE.heatDamageThreshold) {
     state.heat = 38;
     state.net.points.length = 0;
@@ -150,15 +156,14 @@ export function registerLightningCrossing(state, bolt, audio, emit) {
     state.flash = 1;
     emit?.({ kind: 'overheat', x: state.skiff.x, y: state.skiff.y });
     audio?.overheat?.();
-    state.hull = Math.max(0, state.hull - BALANCE.heatDamage);
+    if (state.clock >= 6) state.hull = Math.max(0, state.hull - BALANCE.heatDamage);
     state.stats.overheats += 1;
     setHint(state, 'OVERHEAT — unfinished circuit destroyed, hull damaged.', 3.5);
     if (state.hull <= 0) {
       state.mode = 'DEFEAT';
-      state.defeatReason = 'The circuit overheated the salvage skiff.';
+      state.defeatReason = `Overheated on front ${state.front}`;
     }
   }
-  return crossed;
 }
 
 export function netArea(state) {

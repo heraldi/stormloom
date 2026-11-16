@@ -23,6 +23,9 @@ export function createGameState(seed = 72031) {
     frontsSurvived: 0,
     sparks: [],
     bolts: [],
+    strikes: [],
+    strikeClock: 0,
+    strikeSerial: 0,
     effects: [],
     floatingText: [],
     shake: 0,
@@ -137,10 +140,10 @@ export function chooseUpgrade(state, index) {
 }
 
 export function damageHull(state, amount, reason) {
-  if (state.hitCooldown > 0) return false;
+  if (state.clock < 6 || state.hitCooldown > 0) return false;
   if (state.hullGuard > 0) {
     state.hullGuard -= 1;
-    state.hitCooldown = 0.8;
+    state.hitCooldown = BALANCE.sparkDamageCooldown;
     setHint(state, 'Reinforced hull absorbed the impact.', 2.5);
     return false;
   }
@@ -152,7 +155,7 @@ export function damageHull(state, amount, reason) {
   setHint(state, reason, 2.5);
   if (state.hull <= 0) {
     state.mode = 'DEFEAT';
-    state.defeatReason = 'The salvage skiff could not hold together.';
+    state.defeatReason = reason;
     setHint(state, state.defeatReason, 999);
   }
   return true;
